@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>sombong</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    * { box-sizing: border-box; font-family: "Poppins", sans-serif; }
+    body {
+      margin: 0;
+      height: 100vh;
+      background: linear-gradient(135deg, #ffd6e8, #ffeef6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .container {
+      text-align: center;
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      position: relative;
+      z-index: 10;
+    }
+    h1 { font-size: 1.3rem; margin-bottom: 20px; }
+    button {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    .next-btn, .yes-btn { background: #ff6fae; color: white; }
+    .next-btn:hover, .yes-btn:hover { transform: scale(1.05); box-shadow: 0 5px 15px rgba(255,111,174,0.4); }
+    .yes-btn { margin-right: 10px; }
+    .no-btn { background: #ddd; color: #333; position: relative; }
+    .no-btn:hover { background: #ccc; }
+    .buttons { margin-top: 20px; }
+    .hidden { display: none; }
+
+    .no-warning {
+      position: fixed;
+      background: #ff4d6d;
+      color: white;
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      animation: fadeOut 3s forwards;
+      z-index: 1000;
+    }
+
+    /* Effects */
+    .confetti { position: fixed; width: 15px; height: 15px; top: -20px; z-index: 5; opacity: 0.9; }
+    .heart { position: fixed; color: #ff6fae; font-size: 24px; z-index: 5; opacity: 0; }
+    .sad-emoji { position: fixed; font-size: 30px; z-index: 5; opacity: 0; }
+    .star { position: fixed; color: #ffd700; font-size: 20px; z-index: 1; opacity: 0; }
+
+    @keyframes boomerEffect { 0% { transform: scale(1); } 50% { transform: scale(1.1) rotate(5deg); } 100% { transform: scale(1); } }
+    @keyframes happyJump { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-20px); } }
+    @keyframes sadFall { 0%{ transform: translateY(-100px) rotate(0deg); } 100%{ transform: translateY(100vh) rotate(360deg); } }
+    @keyframes twinkle { 0%,100%{ opacity:0.2 } 50%{ opacity:1 } }
+    @keyframes floatUp { 0%{ transform: translateY(0) scale(0.5); opacity:1 } 100%{ transform: translateY(-100px) scale(1); opacity:0 } }
+    @keyframes confettiFall { 0%{ transform: translateY(0) rotate(0deg) } 100%{ transform: translateY(100vh) rotate(720deg) } }
+    @keyframes fadeOut { 0%{ opacity:1 } 100%{ opacity:0 } }
+    @keyframes wiggle { 0%,100%{ transform: rotate(0deg) } 25%{ transform: rotate(-3deg) } 75%{ transform: rotate(3deg) } }
+
+    .yes-effect-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+    .final-message-effect { animation: happyJump 2s infinite; }
+
+    /* Respect user's reduced motion preference */
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container" role="main">
+
+    <div id="msg1">
+      <h1>jangan so sibuk kayak presiden, baca dulu</h1>
+      <button type="button" class="next-btn" id="nextBtn" aria-label="Next message">Next</button>
+    </div>
+
+    <div id="msg2" class="hidden">
+      <h1>lu kenapa sombong, kenapa ga jelas, kenapa aneh, kenapa, kenapa, kenapa??? lu benci gua yaa??????????????????? do you mad at me or hate meee??????</h1>
+      <div class="buttons">
+        <button type="button" class="yes-btn" id="yesBtn" aria-label="Yes, I do">Yes</button>
+        <button type="button" class="no-btn" id="noBtn" aria-label="No, I don't">No</button>
+      </div>
+    </div>
+
+    <div id="finalMsg" class="hidden">
+      <h1 class="final-message-effect">ohh okee.. ternyata emang bener lu benci gua. makasih yaa</h1>
+      <button type="button" class="next-btn" id="restartBtn" aria-label="Restart">Restart</button>
+    </div>
+
+  </div>
+
+  <!-- Container for visual effects -->
+  <div class="yes-effect-container" id="yesEffectContainer" aria-hidden="true"></div>
+
+  <!-- Background audio (kept but play initiated only via user interaction) -->
+  <audio id="bgMusic" src="https://cdn.pixabay.com/audio/2022/03/15/audio_0c8d5b74b4.mp3" preload="none"></audio>
+
+  <script>
+    // DOM elements
+    const msg1 = document.getElementById("msg1");
+    const msg2 = document.getElementById("msg2");
+    const finalMsg = document.getElementById("finalMsg");
+    const yesEffectContainer = document.getElementById("yesEffectContainer");
+
+    const nextBtn = document.getElementById("nextBtn");
+    const yesBtn = document.getElementById("yesBtn");
+    const noBtn = document.getElementById("noBtn");
+    const restartBtn = document.getElementById("restartBtn");
+
+    const audio = document.getElementById("bgMusic");
+    const container = document.querySelector('.container');
+
+    let noClickCount = 0;
+    let isPlayingMusic = false;
+
+    // Respect reduced motion preference
+    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function boomerEffectOnBody() {
+      if (prefersReducedMotion) return;
+      document.body.animate(
+        [{ transform: "scale(1)" }, { transform: "scale(1.02)" }, { transform: "scale(1)" }],
+        { duration: 300 }
+      );
+    }
+
+    function showNoWarning(x, y) {
+      const warning = document.createElement("div");
+      warning.className = "no-warning";
+      warning.textContent = "jawab dengan jujurrr";
+      warning.style.left = Math.max(8, Math.min(window.innerWidth - 120, x)) + "px";
+      warning.style.top = Math.max(8, Math.min(window.innerHeight - 40, y)) + "px";
+      document.body.appendChild(warning);
+      setTimeout(() => warning.remove(), 3000);
+    }
+
+    function getRandomPastelColor() {
+      const hue = Math.floor(Math.random() * 360);
+      return `hsl(${hue}, 100%, 85%)`;
+    }
+
+    function createYesEffect() {
+      if (prefersReducedMotion) return;
+      // quick boomer
+      document.body.style.animation = "boomerEffect 0.5s";
+      setTimeout(() => { document.body.style.animation = ""; }, 500);
+
+      // stars
+      for (let i = 0; i < 30; i++) {
+        setTimeout(() => {
+          const star = document.createElement("div");
+          star.classList.add("star");
+          star.textContent = "✨";
+          star.style.left = Math.random() * 100 + "vw";
+          star.style.top = Math.random() * 100 + "vh";
+          star.style.animation = `twinkle ${1 + Math.random() * 2}s infinite`;
+          star.style.fontSize = (12 + Math.random() * 20) + "px";
+          document.body.appendChild(star);
+          setTimeout(() => star.remove(), 3000);
+        }, i * 40);
+      }
+
+      // confetti
+      for (let i = 0; i < 80; i++) {
+        setTimeout(() => {
+          const confetti = document.createElement("div");
+          confetti.classList.add("confetti");
+          confetti.style.left = Math.random() * 100 + "vw";
+          confetti.style.backgroundColor = getRandomPastelColor();
+          confetti.style.borderRadius = "50%";
+          confetti.style.width = (8 + Math.random() * 12) + "px";
+          confetti.style.height = (8 + Math.random() * 12) + "px";
+          document.body.appendChild(confetti);
+          confetti.animate(
+            [
+              { transform: `translateY(0px) rotate(0deg)`, opacity: 1 },
+              { transform: `translateY(100vh) rotate(${360 + Math.random() * 360}deg)`, opacity: 0 }
+            ],
+            { duration: 1800 + Math.random() * 1800, easing: "cubic-bezier(0.215,0.61,0.355,1)" }
+          );
+          setTimeout(() => confetti.remove(), 4000);
+        }, i * 25);
+      }
+
+      // hearts
+      for (let i = 0; i < 20; i++) {
+        setTimeout(() => {
+          const heart = document.createElement("div");
+          heart.classList.add("heart");
+          heart.textContent = "💖";
+          heart.style.left = Math.random() * 100 + "vw";
+          heart.style.fontSize = (18 + Math.random() * 24) + "px";
+          yesEffectContainer.appendChild(heart);
+          heart.animate(
+            [
+              { transform: "translateY(100vh) scale(0.5)", opacity: 0.5 },
+              { transform: "translateY(0) scale(1.2)", opacity: 1 },
+              { transform: "translateY(-100px) scale(1)", opacity: 0 }
+            ],
+            { duration: 2800, easing: "cubic-bezier(0.175,0.885,0.32,1.275)" }
+          );
+          setTimeout(() => heart.remove(), 3000);
+        }, i * 120);
+      }
+
+      // wiggle restart
+      restartBtn.style.animation = "wiggle 0.5s infinite";
+    }
+
+    function createNoEffect() {
+      if (prefersReducedMotion) return;
+      noBtn.style.animation = "boomerEffect 0.5s";
+      setTimeout(() => { noBtn.style.animation = ""; }, 500);
+
+      // sad emoji fall
+      for (let i = 0; i < 15; i++) {
+        setTimeout(() => {
+          const sadEmoji = document.createElement("div");
+          sadEmoji.classList.add("sad-emoji");
+          sadEmoji.textContent = "😢";
+          sadEmoji.style.left = Math.random() * 100 + "vw";
+          document.body.appendChild(sadEmoji);
+          sadEmoji.animate(
+            [
+              { transform: "translateY(-100px) rotate(0deg)", opacity: 1 },
+              { transform: `translateY(100vh) rotate(${180 + Math.random() * 180}deg)`, opacity: 0 }
+            ],
+            { duration: 2600 + Math.random() * 2200, easing: "cubic-bezier(0.55,0.085,0.68,0.53)" }
+          );
+          setTimeout(() => sadEmoji.remove(), 5000);
+        }, i * 180);
+      }
+
+      // small shake on container
+      if (container) {
+        container.animate(
+          [
+            { transform: "translateX(0)" },
+            { transform: "translateX(-5px)" },
+            { transform: "translateX(5px)" },
+            { transform: "translateX(0)" }
+          ],
+          { duration: 450, easing: "ease-in-out" }
+        );
+      }
+    }
+
+    // Events
+    nextBtn.addEventListener("click", () => {
+      msg1.classList.add("hidden");
+      msg2.classList.remove("hidden");
+      boomerEffectOnBody();
+      yesBtn.style.animation = "wiggle 0.5s 3";
+      noBtn.style.animation = "wiggle 0.5s 3 0.2s";
+    });
+
+    yesBtn.addEventListener("click", () => {
+      msg2.classList.add("hidden");
+      finalMsg.classList.remove("hidden");
+      createYesEffect();
+
+      // Try to play music after a user action; handle promise rejection
+      if (!isPlayingMusic) {
+        audio.play().then(() => {
+          isPlayingMusic = true;
+        }).catch(() => {
+          // Autoplay blocked: keep audio paused; user can enable manually
+          isPlayingMusic = false;
+        });
+      }
+    });
+
+    noBtn.addEventListener("mouseenter", () => {
+      const x = Math.random() * (window.innerWidth - noBtn.offsetWidth);
+      const y = Math.random() * (window.innerHeight - noBtn.offsetHeight);
+      noBtn.style.position = "fixed";
+      noBtn.style.left = x + "px";
+      noBtn.style.top = y + "px";
+      if (!prefersReducedMotion) {
+        noBtn.style.animation = "wiggle 0.3s";
+        setTimeout(() => { noBtn.style.animation = ""; }, 300);
+      }
+    });
+
+    noBtn.addEventListener("click", (e) => {
+      noClickCount++;
+      showNoWarning(e.clientX, e.clientY);
+      createNoEffect();
+    });
+
+    restartBtn.addEventListener("click", () => {
+      finalMsg.classList.add("hidden");
+      msg1.classList.remove("hidden");
+      boomerEffectOnBody();
+
+      // Stop music
+      if (isPlayingMusic) {
+        audio.pause();
+        audio.currentTime = 0;
+        isPlayingMusic = false;
+      }
+
+      restartBtn.style.animation = "";
+      yesEffectContainer.innerHTML = "";
+      const effectElements = document.querySelectorAll('.confetti, .heart, .sad-emoji, .star');
+      effectElements.forEach(el => el.remove());
+      // Reset moved No button back to normal flow
+      noBtn.style.position = "";
+      noBtn.style.left = "";
+      noBtn.style.top = "";
+    });
+
+    // Create initial subtle stars (if not reduced motion)
+    window.addEventListener('load', () => {
+      if (prefersReducedMotion) return;
+      for (let i = 0; i < 18; i++) {
+        const star = document.createElement("div");
+        star.classList.add("star");
+        star.textContent = "✨";
+        star.style.left = Math.random() * 100 + "vw";
+        star.style.top = Math.random() * 100 + "vh";
+        star.style.animation = `twinkle ${2 + Math.random() * 3}s infinite ${Math.random() * 2}s`;
+        star.style.fontSize = (10 + Math.random() * 15) + "px";
+        document.body.appendChild(star);
+      }
+    });
+  </script>
+
+</body>
+</html>
